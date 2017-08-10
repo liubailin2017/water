@@ -1,8 +1,8 @@
 /*
-* hello,
-* wolrd
+* file : hellowolrd.c
+*autor : liubailin
+*date  : 8-10 2017
 *
-* www.youku.com
 */
 
 #include<stdio.h>
