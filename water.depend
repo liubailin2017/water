@@ -1,0 +1,8 @@
+# depslib dependency file v1.0
+1548922366 source:/home/liubailin/Desktop/water/main.cpp
+	<iostream>
+	<SDL2/SDL.h>
+	<stdio.h>
+	<stdlib.h>
+	<math.h>
+

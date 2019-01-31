@@ -1,9 +1,15 @@
+/*
+参考地址: https://blog.csdn.net/yp120yp/article/details/7543298
+*/
 #include<iostream>
 #include<SDL2/SDL.h>
 #include<stdio.h>
 #include<stdlib.h>
-using namespace std;
+#include<math.h>
 
+using namespace std;
+SDL_Surface *win_sur = 0;
+ int isquit = 0;
 SDL_Surface * img = SDL_LoadBMP("test.bmp");
 int WIDTH = img->w ,HEIGHT = img->h ;
 short *buf1 = new short[WIDTH * HEIGHT];
@@ -37,7 +43,7 @@ void ripple()
         for(int i=WIDTH; i<WIDTH*HEIGHT-WIDTH; i++)
         {
             buf2[i] = ((buf1[i-1]+buf1[i+1]+buf1[i-WIDTH]+buf1[i+WIDTH])>>1)-buf2[i];
-            buf2[i]-=buf2[i]>>6;
+            buf2[i]-=buf2[i]>>5;
         }
 
     short *ptmp = buf1;
@@ -92,20 +98,40 @@ void fuzz(SDL_Surface * src, SDL_Surface *tar)
     int w = src->w,h= src->h;
     Uint8 *psrc;
     Uint8 *ptar;
+    /*
      int xf,yf;
+        SDL_BlitSurface(src,0,tar,0);
         for(int i = 0; i< w-1 ; i++)
         {
             for(int j = 0; j < h-1; j++)
             {
               xf =  buf1[i + j*WIDTH] - buf1[i+1+j*WIDTH];
               yf =  buf1[i + j*WIDTH] - buf1[i +(j+1)*WIDTH];
-              xf = xf / 60;
-              yf = yf / 60;
                 psrc = (Uint8 *)src->pixels + j*src->pitch  + i*src->format->BytesPerPixel;
                 Putpixel(tar,i+xf,j+yf,*(Uint32 *)psrc);
             }
         }
+*/
 
+      int xoff, yoff;
+      int k = WIDTH;
+      for (int i=1; i<HEIGHT-1; i++)
+      {
+          for (int j=0; j<WIDTH; j++)
+          {
+              //计算偏移量
+              xoff = buf1[k-1]-buf1[k+1];
+              yoff = buf1[k-WIDTH]-buf1[k+WIDTH];
+              if ((i+yoff )< 0 ) {k++; continue;}
+              if ((i+yoff )> HEIGHT) {k++; continue;}
+              if ((j+xoff )< 0 ) {k++; continue;}
+              if ((j+xoff )> WIDTH ) {k++; continue;}
+
+             psrc = (Uint8 *)src->pixels + i*src->pitch  + j*src->format->BytesPerPixel;
+             Putpixel(tar,j+xoff,i+yoff,*(Uint32 *)psrc);
+              k++;
+          }
+      }
 
     if(SDL_MUSTLOCK(src))
         SDL_UnlockSurface(src);
@@ -113,9 +139,29 @@ void fuzz(SDL_Surface * src, SDL_Surface *tar)
         SDL_UnlockSurface(tar);
 }
 
+void stone(int x,int y,int r,int h) {
+    int r_2 = r*r;
+    for( int i = -r; i < r; i++ ) {
+        int t = sqrt(r_2 - i*i );
+        for(int j = -t ; j < t; j++) {
+            buf1[x + j + y*WIDTH] = h;
+        }
+    }
+}
+SDL_Thread *ripplethread;
+
+int runthread(void *d) {
+//线程不安全
+    while(!isquit) {
+        fuzz(img,win_sur);
+    //    SDL_Delay(20);
+        ripple();
+    }
+}
+
 int main(int argc ,char *argv[])
 {
-    int isquit = 0;
+
     init();
     SDL_Init(SDL_INIT_EVERYTHING);
     SDL_Window * win = SDL_CreateWindow(
@@ -125,15 +171,15 @@ int main(int argc ,char *argv[])
                                         WIDTH,HEIGHT,
                                         SDL_WINDOW_SHOWN);
 
-    SDL_Surface *win_sur = SDL_GetWindowSurface(win);
+    win_sur = SDL_GetWindowSurface(win);
     SDL_Event event;
     SDL_Event initevent;
 
+    ripplethread = SDL_CreateThread(runthread,"ripple",0);
+
     while(!isquit)
     {
-        fuzz(img,win_sur);
-        SDL_Delay(20);
-         ripple();
+
            SDL_PollEvent(&event);
             switch(event.type)
             {
@@ -141,8 +187,8 @@ int main(int argc ,char *argv[])
                      isquit = 1;
                 break;
                 case SDL_MOUSEBUTTONDOWN:
-                        buf1[event.button.x+event.button.y*WIDTH] = -256*100;
-                 break;
+                stone(event.button.x,event.button.y,50,-180);
+                break;
             }
             event = initevent;
             SDL_UpdateWindowSurface(win);
